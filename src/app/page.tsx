@@ -1,101 +1,179 @@
-import Image from "next/image";
+"use client";
+
+import { createPublicClient, http } from "viem";
+import { avalancheFuji } from "viem/chains";
+import { useState, useEffect, useCallback } from "react";
+import { CompilerErrorBoundary } from "@/components/CompilerErrorBoundary";
+import { WebSolcProvider, useWebSolc } from "@web-solc/react";
+import type { CompilerInput, CompilerOutput } from "web-solc";
+
+function ContractCompiler() {
+  const [contractSource, setContractSource] = useState("");
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [compiledBytecode, setCompiledBytecode] = useState<string>("");
+  const [compilationError, setCompilationError] = useState<string>("");
+  const [isCompiling, setIsCompiling] = useState(false);
+
+  const solc = useWebSolc("^0.8.25");
+
+  const handleCompilation = useCallback(async () => {
+    if (!solc) return;
+
+    try {
+      setIsCompiling(true);
+      setCompilationError("");
+      setCompiledBytecode("");
+
+      if (!contractSource.trim()) {
+        setCompilationError("Contract source cannot be empty");
+        return;
+      }
+
+      const input: CompilerInput = {
+        language: "Solidity",
+        sources: {
+          "contract.sol": {
+            content: contractSource,
+          },
+        },
+        settings: {
+          outputSelection: {
+            "*": {
+              "*": ["evm.bytecode", "abi"],
+            },
+          },
+        },
+      };
+
+      const output = await solc.compile(input);
+
+      // Check for errors in compilation
+      if (output.errors?.some((error) => error.severity === "error")) {
+        setCompilationError(
+          output.errors.map((e) => e.formattedMessage).join("\n")
+        );
+        return;
+      }
+
+      // Get the bytecode from the output
+      const contractName = Object.keys(output.contracts["contract.sol"])[0];
+      const bytecode =
+        output.contracts["contract.sol"][contractName].evm.bytecode.object;
+      setCompiledBytecode(bytecode);
+    } catch (error) {
+      setCompilationError(
+        error instanceof Error ? error.message : "Unknown error occurred"
+      );
+    } finally {
+      setIsCompiling(false);
+    }
+  }, [contractSource, solc]);
+
+  return (
+    <div className="p-4 bg-gray-100 rounded-lg">
+      <div
+        className="flex justify-between items-center cursor-pointer"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <h2 className="text-xl font-semibold">Solidity Contract Source</h2>
+        <button className="text-gray-600 hover:text-gray-800">
+          {isExpanded ? "▼" : "▶"}
+        </button>
+      </div>
+
+      {isExpanded && (
+        <div className="mt-2 space-y-4">
+          <CompilerErrorBoundary>
+            <textarea
+              value={contractSource}
+              onChange={(e) => setContractSource(e.target.value)}
+              className="w-full h-96 p-4 font-mono text-sm border border-gray-300 rounded-md"
+              placeholder="Paste your Solidity contract source code here..."
+              spellCheck="false"
+            />
+
+            <div className="flex justify-end mt-4">
+              <button
+                onClick={handleCompilation}
+                disabled={isCompiling}
+                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors disabled:bg-blue-300"
+              >
+                {isCompiling ? "Compiling..." : "Compile Contract"}
+              </button>
+            </div>
+
+            {compilationError && (
+              <div className="mt-4 p-4 bg-red-100 border border-red-400 rounded-md text-red-700">
+                <h3 className="font-semibold mb-2">Compilation Error:</h3>
+                <pre className="whitespace-pre-wrap font-mono text-sm">
+                  {compilationError}
+                </pre>
+              </div>
+            )}
+
+            {compiledBytecode && !compilationError && (
+              <div className="mt-4 p-4 bg-green-100 border border-green-400 rounded-md">
+                <h3 className="font-semibold mb-2">Compiled Bytecode:</h3>
+                <div className="max-h-40 overflow-auto">
+                  <pre className="whitespace-pre-wrap font-mono text-sm break-all">
+                    {compiledBytecode}
+                  </pre>
+                </div>
+              </div>
+            )}
+          </CompilerErrorBoundary>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [rpcUrl, setRpcUrl] = useState(
+    "http://api.avax-test.network/ext/bc/C/rpc"
+  );
+  const [client, setClient] = useState(() =>
+    createPublicClient({
+      chain: avalancheFuji,
+      transport: http(rpcUrl),
+    })
+  );
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+  const updateClient = useCallback((url: string) => {
+    try {
+      const newClient = createPublicClient({
+        chain: avalancheFuji,
+        transport: http(url),
+      });
+      setClient(newClient);
+      setRpcUrl(url);
+    } catch (error) {
+      console.error("Error creating client:", error);
+    }
+  }, []);
+
+  return (
+    <WebSolcProvider>
+      <main className="min-h-screen p-8">
+        <h1 className="text-3xl font-bold mb-8">
+          Avalanche Fuji Testnet Reader
+        </h1>
+
+        <div className="space-y-4">
+          <div className="p-4 bg-gray-100 rounded-lg">
+            <h2 className="text-xl font-semibold mb-2">RPC URL</h2>
+            <input
+              type="text"
+              value={rpcUrl}
+              onChange={(e) => updateClient(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-md"
+              placeholder="Enter RPC URL"
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+          </div>
+
+          <ContractCompiler />
         </div>
       </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+    </WebSolcProvider>
   );
 }
