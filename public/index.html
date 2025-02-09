@@ -150,43 +150,11 @@
         "https://binaries.soliditylang.org/emscripten-wasm32/solc-emscripten-wasm32-v0.8.19+commit.7dd6d404.js"
       );
       const soljsonText = await response.text();
-      response = await fetch("worker-solc.js");
-      const workerCode = await response.text();
-
-      function startWorker(workerCode) {
-        const workerBlob = new Blob([`${workerCode.toString()}`], {
-          type: "application/javascript",
-        });
-        const workerUrl = URL.createObjectURL(workerBlob);
-        const worker = new Worker(workerUrl);
-
-        return {
-          worker,
-          stopWorker: () => {
-            worker.terminate();
-            URL.revokeObjectURL(workerUrl);
-          },
-        };
-      }
-
-      const { worker, stopWorker } = startWorker(workerCode);
-
+      const worker = new Worker("worker-solc.js");
       function compile(input) {
-        return new Promise((accept, reject) => {
-          worker.onmessage = (event) => {
-            console.log("worker message:", event.data);
-            try {
-              accept(event.data);
-            } catch (error) {
-              reject(error);
-            }
-          };
-
-          worker.onerror = reject;
-
-          worker.postMessage({ soljsonText, input });
-        });
+        worker.postMessage({ soljsonText, input });
       }
+
       // Initialize compiler section
       const compilerHeader = document.getElementById("compilerHeader");
       const compilerContent = document.getElementById("compilerContent");
@@ -197,12 +165,15 @@
       const successDiv = document.getElementById("success");
       const bytecodeDiv = document.getElementById("bytecode");
 
-      // Create Web Worker
-      // const worker = new Worker("worker.mjs", { type: "module" });
-
       // Handle worker messages
       worker.addEventListener("message", (e) => {
-        const { type, bytecode, error } = e.data;
+        const msgForError = (err) =>
+          err.message || err.formattedMessage || JSON.stringify(err);
+        let { type, output, error } = e.data;
+        if (output?.errors?.length > 0) {
+          type = "error";
+          error = output.errors.map(msgForError).join("\n\n");
+        }
 
         switch (type) {
           case "initialized":
@@ -216,7 +187,7 @@
             break;
 
           case "error":
-            errorDiv.textContent = error;
+            errorDiv.textContent = msgForError(error);
             errorDiv.classList.remove("hidden");
             successDiv.classList.add("hidden");
             break;
@@ -265,7 +236,7 @@
       compileButton.addEventListener("click", doCompile);
 
       // Disable compile button until worker is ready
-      compileButton.disabled = false;
+      compileButton.disabled = true;
     </script>
   </body>
 </html>
