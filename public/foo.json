@@ -1,0 +1,15 @@
+{
+  "language": "Solidity",
+  "sources": {
+    "test.sol": {
+      "content": "pragma solidity ^0.8.0; contract Test {}"
+    }
+  },
+  "settings": {
+    "outputSelection": {
+      "*": {
+        "*": ["*"]
+      }
+    }
+  }
+}
