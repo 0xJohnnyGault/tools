@@ -18,7 +18,6 @@ const compilerInput = (source) => {
 };
 
 self.onmessage = async (event) => {
-  console.log("onmessage", event);
   try {
     const { soljsonText, source } = event.data;
     const solc = await loadSolc(soljsonText);

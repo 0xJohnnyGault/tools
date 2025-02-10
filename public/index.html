@@ -120,17 +120,58 @@
       </div>
 
       <div class="card">
+        <h2>Contract Address</h2>
+        <input
+          type="text"
+          id="contractAddress"
+          value="0x399D78327E665D21c8B9582D4843CA5DCA0e7dc4"
+          placeholder="Enter the contract address to override"
+        />
+      </div>
+
+      <div class="card">
+        <h2>Function Name</h2>
+        <input
+          type="text"
+          id="functionName"
+          value="getGuardian"
+          placeholder="Enter the function name to run"
+        />
+      </div>
+
+      <div class="card">
         <div class="header" id="compilerHeader">
           <h2>Solidity Contract Source</h2>
           <span class="toggle">▶</span>
         </div>
 
-        <div id="compilerContent" class="hidden">
+        <div id="compilerContent">
           <textarea
             id="contractSource"
             placeholder="Paste your Solidity contract source code here..."
             spellcheck="false"
-          ></textarea>
+          >
+            pragma solidity ^0.8.0;
+
+            contract Viewer {
+
+mapping(bytes32 => address) private addressStorage;
+	mapping(bytes32 => bool) private booleanStorage;
+	mapping(bytes32 => bytes) private bytesStorage;
+	mapping(bytes32 => bytes32) private bytes32Storage;
+	mapping(bytes32 => int256) private intStorage;
+	mapping(bytes32 => string) private stringStorage;
+	mapping(bytes32 => uint256) private uintStorage;
+
+	// Guardian address
+	address private guardian; //0x5e32bAb27EC0B44d490066385f827838C49b61E1
+	address public newGuardian;  
+
+  function getGuardian() external view returns (address) {
+		return guardian; 
+	}
+            }
+          </textarea>
 
           <div style="text-align: right; margin-top: 1rem">
             <button id="compileButton">Compile Contract</button>
@@ -146,13 +187,63 @@
     </div>
 
     <script type="module">
+      import {
+        createPublicClient,
+        decodeFunctionResult,
+        encodeFunctionData,
+        http,
+        parseAbi,
+      } from "https://esm.sh/viem";
+      import { avalancheFuji } from "https://esm.sh/viem/chains";
+
+      async function ethCall(contractAddress, abi, functionName, byteCode) {
+        const client = createPublicClient({
+          chain: avalancheFuji,
+          transport: http(),
+        });
+        try {
+          const callData = encodeFunctionData({
+            abi,
+            functionName,
+            args: null,
+          });
+          const payload = {
+            jsonrpc: "2.0",
+            method: "eth_call",
+            params: [
+              {
+                to: contractAddress,
+                data: callData,
+              },
+              "latest",
+              {
+                [contractAddress]: {
+                  code: byteCode,
+                },
+              },
+            ],
+          };
+          const data = await client.request(payload);
+          console.log("data", data);
+          const decoded = decodeFunctionResult({
+            abi,
+            functionName,
+            data,
+          });
+          console.log("decoded", decoded);
+          return decoded;
+        } catch (error) {
+          console.error("Error calling contract:", error);
+          return null;
+        }
+      }
+
       let response = await fetch(
         "https://binaries.soliditylang.org/emscripten-wasm32/solc-emscripten-wasm32-v0.8.19+commit.7dd6d404.js"
       );
       const soljsonText = await response.text();
       const worker = new Worker("worker-solc.js");
       function compile(source) {
-        console.log("compile", source);
         worker.postMessage({ soljsonText, source });
       }
 
@@ -169,8 +260,15 @@
       function getBytecode(output) {
         const contractObj = output.contracts["viewer.sol"];
         const contractName = Object.keys(contractObj)[0];
-        const bytecode = contractObj[contractName].evm.bytecode.object;
-        return bytecode;
+        const bytecode = contractObj[contractName].evm.deployedBytecode.object;
+        return `0x${bytecode}`;
+      }
+
+      function getABI(output) {
+        const contractObj = output.contracts["viewer.sol"];
+        const contractName = Object.keys(contractObj)[0];
+        const abi = contractObj[contractName].abi;
+        return abi;
       }
 
       // Handle worker messages
@@ -187,6 +285,13 @@
             bytecodeDiv.textContent = getBytecode(output);
             successDiv.classList.remove("hidden");
             errorDiv.classList.add("hidden");
+
+            ethCall(
+              contractAddress.value,
+              getABI(output),
+              functionName.value,
+              getBytecode(output)
+            );
             break;
 
           case "error":
@@ -198,21 +303,6 @@
 
         compileButton.disabled = false;
         compileButton.textContent = "Compile Contract";
-      });
-
-      // Handle worker errors
-      worker.addEventListener("error", (error) => {
-        errorDiv.textContent = `Worker error: ${error.message}`;
-        errorDiv.classList.remove("hidden");
-        successDiv.classList.add("hidden");
-        compileButton.disabled = false;
-        compileButton.textContent = "Compile Contract";
-      });
-
-      compilerHeader.addEventListener("click", () => {
-        const isHidden = compilerContent.classList.contains("hidden");
-        compilerContent.classList.toggle("hidden");
-        toggle.textContent = isHidden ? "▼" : "▶";
       });
 
       async function doCompile() {
