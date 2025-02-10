@@ -4,7 +4,7 @@ const compilerInput = (source) => {
     language: "Solidity",
     sources: {
       "contract.sol": {
-        content: prefix + "\n\n" + source,
+        content: "",
       },
     },
     settings: {
@@ -15,6 +15,8 @@ const compilerInput = (source) => {
   };
 };
 
+// {"language":"Solidity","sources":{"contract.sol":{"content":""}},"settings":{"outputSelection":{"*":["*"]}}}
+
 self.onmessage = async (event) => {
   console.log("onmessage", event);
   try {
@@ -24,8 +26,7 @@ self.onmessage = async (event) => {
     const input = compilerInput(source);
     console.log(input);
     const s = JSON.stringify(input);
-    console.log(`foo: ${s}`);
-    debugger;
+    console.log(`${s}`);
     const solOut = solc.compile(s);
     const output = JSON.parse(solOut);
     if (output?.errors?.length > 0) {
