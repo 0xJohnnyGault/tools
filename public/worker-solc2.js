@@ -3,26 +3,46 @@ const compilerInput = (source) => {
   return {
     language: "Solidity",
     sources: {
-      "viewer.sol": {
+      "contract.sol": {
         content: `${prefix}\n${source}`,
       },
     },
     settings: {
       outputSelection: {
-        "*": {
-          "*": ["*"],
-        },
+        "*": ["*"],
       },
     },
   };
 };
+
+// {"language":"Solidity","sources":{"contract.sol":{"content":""}},"settings":{"outputSelection":{"*":["*"]}}}
+// {
+//   "language": "Solidity",
+//   "sources": {
+//     "contract.sol": {
+//       "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0; contract Test {}"
+//     }
+//   },
+//   "settings": {
+//     "outputSelection": {
+//       "*": [
+//         "*"
+//       ]
+//     }
+//   }
+// }
 
 self.onmessage = async (event) => {
   console.log("onmessage", event);
   try {
     const { soljsonText, source } = event.data;
     const solc = await loadSolc(soljsonText);
-    const solOut = solc.compile(JSON.stringify(compilerInput(source)));
+    console.log(source);
+    const input = compilerInput(source);
+    console.log(input);
+    const s = JSON.stringify(input, null, 2);
+    console.log(`${s}`);
+    const solOut = solc.compile(s);
     const output = JSON.parse(solOut);
     if (output?.errors?.length > 0) {
       errorMessage = output.errors

@@ -152,6 +152,7 @@
       const soljsonText = await response.text();
       const worker = new Worker("worker-solc.js");
       function compile(source) {
+        console.log("compile", source);
         worker.postMessage({ soljsonText, source });
       }
 
@@ -165,8 +166,16 @@
       const successDiv = document.getElementById("success");
       const bytecodeDiv = document.getElementById("bytecode");
 
+      function getBytecode(output) {
+        const contractObj = output.contracts["viewer.sol"];
+        const contractName = Object.keys(contractObj)[0];
+        const bytecode = contractObj[contractName].evm.bytecode.object;
+        return bytecode;
+      }
+
       // Handle worker messages
       worker.addEventListener("message", (e) => {
+        console.log("message", e);
         let { type, output, error } = e.data;
 
         switch (type) {
@@ -175,7 +184,7 @@
             break;
 
           case "success":
-            bytecodeDiv.textContent = bytecode;
+            bytecodeDiv.textContent = getBytecode(output);
             successDiv.classList.remove("hidden");
             errorDiv.classList.add("hidden");
             break;
