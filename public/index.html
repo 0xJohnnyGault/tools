@@ -151,8 +151,8 @@
       );
       const soljsonText = await response.text();
       const worker = new Worker("worker-solc.js");
-      function compile(input) {
-        worker.postMessage({ soljsonText, input });
+      function compile(source) {
+        worker.postMessage({ soljsonText, source });
       }
 
       // Initialize compiler section
@@ -167,13 +167,7 @@
 
       // Handle worker messages
       worker.addEventListener("message", (e) => {
-        const msgForError = (err) =>
-          err.message || err.formattedMessage || JSON.stringify(err);
         let { type, output, error } = e.data;
-        if (output?.errors?.length > 0) {
-          type = "error";
-          error = output.errors.map(msgForError).join("\n\n");
-        }
 
         switch (type) {
           case "initialized":
@@ -187,7 +181,7 @@
             break;
 
           case "error":
-            errorDiv.textContent = msgForError(error);
+            errorDiv.textContent = error;
             errorDiv.classList.remove("hidden");
             successDiv.classList.add("hidden");
             break;

@@ -1,9 +1,41 @@
+const compilerInput = (source) => {
+  const prefix = "// SPDX-License-Identifier: MIT";
+  return {
+    language: "Solidity",
+    sources: {
+      "contract.sol": {
+        content: prefix + "\n\n" + source,
+      },
+    },
+    settings: {
+      outputSelection: {
+        "*": ["*"],
+      },
+    },
+  };
+};
+
 self.onmessage = async (event) => {
+  console.log("onmessage", event);
   try {
-    const { soljsonText, input } = event.data;
+    const { soljsonText, source } = event.data;
     const solc = await loadSolc(soljsonText);
-    const solOut = solc.compile(input);
+    console.log(source);
+    const input = compilerInput(source);
+    console.log(input);
+    const s = JSON.stringify(input);
+    console.log(`foo: ${s}`);
+    debugger;
+    const solOut = solc.compile(s);
     const output = JSON.parse(solOut);
+    if (output?.errors?.length > 0) {
+      errorMessage = output.errors
+        .map(
+          (err) => err.message || err.formattedMessage || JSON.stringify(err)
+        )
+        .join("\n\n");
+      throw new Error(errorMessage);
+    }
     self.postMessage({ type: "success", output });
   } catch (error) {
     self.postMessage({ type: "error", error: error.message });
