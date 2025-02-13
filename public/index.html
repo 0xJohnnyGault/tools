@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Avalanche Fuji Contract Compiler</title>
+    <title>Avalanche Add PoA Validator</title>
     <style>
       body {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
@@ -106,7 +106,7 @@
     </style>
   </head>
   <body>
-    <h1>Avalanche Fuji Contract Compiler</h1>
+    <h1>Avalanche Add PoA Validator</h1>
 
     <div class="container">
       <div class="card">
@@ -114,8 +114,28 @@
         <input
           type="text"
           id="rpcUrl"
-          value="https://api.avax-test.network/ext/bc/C/rpc"
+          value="https://subnets.avax.network/etx/mainnet/rpc"
           placeholder="Enter RPC URL"
+        />
+      </div>
+
+      <div class="card">
+        <h2>Subnet ID</h2>
+        <input
+          type="text"
+          id="subnetId"
+          value="q54cgHa9RN2NFp9qsfpPzVkhgn8xqDgKEQR1G997xZ1P5Dc8o"
+          placeholder="Enter the SubnetID"
+        />
+      </div>
+
+      <div class="card">
+        <h2>Blockchain ID</h2>
+        <input
+          type="text"
+          id="blockchainId"
+          value="2R87vuaaRZRxPLdvdMEpo7fH9qyyNnP34h4nyxuwq8sKkQ1GaE"
+          placeholder="Enter the BlockchainID"
         />
       </div>
 
@@ -124,212 +144,47 @@
         <input
           type="text"
           id="contractAddress"
-          value="0x399D78327E665D21c8B9582D4843CA5DCA0e7dc4"
-          placeholder="Enter the contract address to override"
+          value="0x0feedc0de0000000000000000000000000000000"
+          placeholder="Enter the PoA Validator Managercontract address"
         />
       </div>
 
       <div class="card">
-        <h2>Function Name</h2>
+        <h2>Node ID</h2>
+        <input type="text" id="nodeId" placeholder="Enter the Node ID" />
+      </div>
+
+      <div class="card">
+        <h2>BLS Key</h2>
+        <input type="text" id="blsKey" placeholder="Enter the BLS Key" />
+      </div>
+
+      <div class="card">
+        <h2>BLS Proof of Possession</h2>
         <input
           type="text"
-          id="functionName"
-          value="getGuardian"
-          placeholder="Enter the function name to run"
+          id="blsPoP"
+          placeholder="Enter the BLS Proof of Possession"
         />
       </div>
 
       <div class="card">
-        <div class="header" id="compilerHeader">
-          <h2>Solidity Contract Source</h2>
-          <span class="toggle">▶</span>
+        <h2>P-Chain Address</h2>
+        <input
+          type="text"
+          id="pchainAddress"
+          placeholder="Enter the P-Chain Address"
+        />
+      </div>
+
+      <div class="card">
+        <div style="text-align: right; margin-top: 1rem">
+          <button id="addValidatorButton">Add Validator</button>
         </div>
-
-        <div id="compilerContent">
-          <textarea
-            id="contractSource"
-            placeholder="Paste your Solidity contract source code here..."
-            spellcheck="false"
-          >
-            pragma solidity ^0.8.0;
-
-            contract Viewer {
-
-mapping(bytes32 => address) private addressStorage;
-	mapping(bytes32 => bool) private booleanStorage;
-	mapping(bytes32 => bytes) private bytesStorage;
-	mapping(bytes32 => bytes32) private bytes32Storage;
-	mapping(bytes32 => int256) private intStorage;
-	mapping(bytes32 => string) private stringStorage;
-	mapping(bytes32 => uint256) private uintStorage;
-
-	// Guardian address
-	address private guardian; //0x5e32bAb27EC0B44d490066385f827838C49b61E1
-	address public newGuardian;  
-
-  function getGuardian() external view returns (address) {
-		return guardian; 
-	}
-            }
-          </textarea>
-
-          <div style="text-align: right; margin-top: 1rem">
-            <button id="compileButton">Compile Contract</button>
-          </div>
-
-          <div id="error" class="error hidden"></div>
-          <div id="success" class="success hidden">
-            <h3>Compiled Bytecode:</h3>
-            <pre id="bytecode"></pre>
-          </div>
-        </div>
+        <div id="error" class="error hidden"></div>
       </div>
     </div>
 
-    <script type="module">
-      import {
-        createPublicClient,
-        decodeFunctionResult,
-        encodeFunctionData,
-        http,
-        parseAbi,
-      } from "https://esm.sh/viem";
-      import { avalancheFuji } from "https://esm.sh/viem/chains";
-
-      async function ethCall(contractAddress, abi, functionName, byteCode) {
-        const client = createPublicClient({
-          chain: avalancheFuji,
-          transport: http(),
-        });
-        try {
-          const callData = encodeFunctionData({
-            abi,
-            functionName,
-            args: null,
-          });
-          const payload = {
-            jsonrpc: "2.0",
-            method: "eth_call",
-            params: [
-              {
-                to: contractAddress,
-                data: callData,
-              },
-              "latest",
-              {
-                [contractAddress]: {
-                  code: byteCode,
-                },
-              },
-            ],
-          };
-          const data = await client.request(payload);
-          console.log("data", data);
-          const decoded = decodeFunctionResult({
-            abi,
-            functionName,
-            data,
-          });
-          console.log("decoded", decoded);
-          return decoded;
-        } catch (error) {
-          console.error("Error calling contract:", error);
-          return null;
-        }
-      }
-
-      let response = await fetch(
-        "https://binaries.soliditylang.org/emscripten-wasm32/solc-emscripten-wasm32-v0.8.19+commit.7dd6d404.js"
-      );
-      const soljsonText = await response.text();
-      const worker = new Worker("worker-solc.js");
-      function compile(source) {
-        worker.postMessage({ soljsonText, source });
-      }
-
-      // Initialize compiler section
-      const compilerHeader = document.getElementById("compilerHeader");
-      const compilerContent = document.getElementById("compilerContent");
-      const toggle = document.querySelector(".toggle");
-      const compileButton = document.getElementById("compileButton");
-      const contractSource = document.getElementById("contractSource");
-      const errorDiv = document.getElementById("error");
-      const successDiv = document.getElementById("success");
-      const bytecodeDiv = document.getElementById("bytecode");
-
-      function getBytecode(output) {
-        const contractObj = output.contracts["viewer.sol"];
-        const contractName = Object.keys(contractObj)[0];
-        const bytecode = contractObj[contractName].evm.deployedBytecode.object;
-        return `0x${bytecode}`;
-      }
-
-      function getABI(output) {
-        const contractObj = output.contracts["viewer.sol"];
-        const contractName = Object.keys(contractObj)[0];
-        const abi = contractObj[contractName].abi;
-        return abi;
-      }
-
-      // Handle worker messages
-      worker.addEventListener("message", (e) => {
-        console.log("message", e);
-        let { type, output, error } = e.data;
-
-        switch (type) {
-          case "initialized":
-            compileButton.disabled = false;
-            break;
-
-          case "success":
-            bytecodeDiv.textContent = getBytecode(output);
-            successDiv.classList.remove("hidden");
-            errorDiv.classList.add("hidden");
-
-            ethCall(
-              contractAddress.value,
-              getABI(output),
-              functionName.value,
-              getBytecode(output)
-            );
-            break;
-
-          case "error":
-            errorDiv.textContent = error;
-            errorDiv.classList.remove("hidden");
-            successDiv.classList.add("hidden");
-            break;
-        }
-
-        compileButton.disabled = false;
-        compileButton.textContent = "Compile Contract";
-      });
-
-      async function doCompile() {
-        try {
-          compileButton.disabled = true;
-          compileButton.textContent = "Compiling...";
-          errorDiv.classList.add("hidden");
-          successDiv.classList.add("hidden");
-
-          const source = contractSource.value.trim();
-          if (!source) {
-            throw new Error("Contract source cannot be empty");
-          }
-
-          await compile(source);
-        } catch (error) {
-          errorDiv.textContent = error.message;
-          errorDiv.classList.remove("hidden");
-          compileButton.disabled = false;
-          compileButton.textContent = "Compile Contract";
-        }
-      }
-
-      compileButton.addEventListener("click", doCompile);
-
-      // Disable compile button until worker is ready
-      compileButton.disabled = true;
-    </script>
+    <script type="module" src="add_validator.js"></script>
   </body>
 </html>

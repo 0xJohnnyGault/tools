@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Avalanche Fuji Contract Compiler</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+        background-color: #f5f5f5;
+      }
+
+      .container {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+      }
+
+      .header h2 {
+        margin: 0;
+        font-size: 1.25rem;
+      }
+
+      input,
+      textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 4px;
+        margin-top: 0.5rem;
+        font-family: monospace;
+      }
+
+      textarea {
+        height: 400px;
+        resize: vertical;
+      }
+
+      button {
+        background-color: #3b82f6;
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1rem;
+      }
+
+      button:hover {
+        background-color: #2563eb;
+      }
+
+      button:disabled {
+        background-color: #93c5fd;
+        cursor: not-allowed;
+      }
+
+      .error {
+        background-color: #fee2e2;
+        border: 1px solid #ef4444;
+        color: #b91c1c;
+        padding: 1rem;
+        border-radius: 4px;
+        margin-top: 1rem;
+      }
+
+      .success {
+        background-color: #dcfce7;
+        border: 1px solid #22c55e;
+        color: #15803d;
+        padding: 1rem;
+        border-radius: 4px;
+        margin-top: 1rem;
+        overflow-x: auto;
+      }
+
+      pre {
+        white-space: pre-wrap;
+        word-break: break-all;
+        margin: 0;
+        font-family: monospace;
+        font-size: 0.875rem;
+      }
+
+      .hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Avalanche Fuji Contract Compiler</h1>
+
+    <div class="container">
+      <div class="card">
+        <h2>RPC URL</h2>
+        <input
+          type="text"
+          id="rpcUrl"
+          value="https://api.avax-test.network/ext/bc/C/rpc"
+          placeholder="Enter RPC URL"
+        />
+      </div>
+
+      <div class="card">
+        <h2>Contract Address</h2>
+        <input
+          type="text"
+          id="contractAddress"
+          value="0x399D78327E665D21c8B9582D4843CA5DCA0e7dc4"
+          placeholder="Enter the contract address to override"
+        />
+      </div>
+
+      <div class="card">
+        <h2>Function Name</h2>
+        <input
+          type="text"
+          id="functionName"
+          value="getGuardian"
+          placeholder="Enter the function name to run"
+        />
+      </div>
+
+      <div class="card">
+        <div class="header" id="compilerHeader">
+          <h2>Solidity Contract Source</h2>
+          <span class="toggle">▶</span>
+        </div>
+
+        <div id="compilerContent">
+          <textarea
+            id="contractSource"
+            placeholder="Paste your Solidity contract source code here..."
+            spellcheck="false"
+          >
+            pragma solidity ^0.8.0;
+
+            contract Viewer {
+
+mapping(bytes32 => address) private addressStorage;
+	mapping(bytes32 => bool) private booleanStorage;
+	mapping(bytes32 => bytes) private bytesStorage;
+	mapping(bytes32 => bytes32) private bytes32Storage;
+	mapping(bytes32 => int256) private intStorage;
+	mapping(bytes32 => string) private stringStorage;
+	mapping(bytes32 => uint256) private uintStorage;
+
+	// Guardian address
+	address private guardian; //0x5e32bAb27EC0B44d490066385f827838C49b61E1
+	address public newGuardian;  
+
+  function getGuardian() external view returns (address) {
+		return guardian; 
+	}
+            }
+          </textarea>
+
+          <div style="text-align: right; margin-top: 1rem">
+            <button id="compileButton">Compile Contract</button>
+          </div>
+
+          <div id="error" class="error hidden"></div>
+          <div id="success" class="success hidden">
+            <h3>Compiled Bytecode:</h3>
+            <pre id="bytecode"></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      import {
+        createPublicClient,
+        decodeFunctionResult,
+        encodeFunctionData,
+        http,
+        parseAbi,
+      } from "https://esm.sh/viem";
+      import { avalancheFuji } from "https://esm.sh/viem/chains";
+
+      async function ethCall(contractAddress, abi, functionName, byteCode) {
+        const client = createPublicClient({
+          chain: avalancheFuji,
+          transport: http(),
+        });
+        try {
+          const callData = encodeFunctionData({
+            abi,
+            functionName,
+            args: null,
+          });
+          const payload = {
+            jsonrpc: "2.0",
+            method: "eth_call",
+            params: [
+              {
+                to: contractAddress,
+                data: callData,
+              },
+              "latest",
+              {
+                [contractAddress]: {
+                  code: byteCode,
+                },
+              },
+            ],
+          };
+          const data = await client.request(payload);
+          console.log("data", data);
+          const decoded = decodeFunctionResult({
+            abi,
+            functionName,
+            data,
+          });
+          console.log("decoded", decoded);
+          return decoded;
+        } catch (error) {
+          console.error("Error calling contract:", error);
+          return null;
+        }
+      }
+
+      let response = await fetch(
+        "https://binaries.soliditylang.org/emscripten-wasm32/solc-emscripten-wasm32-v0.8.19+commit.7dd6d404.js"
+      );
+      const soljsonText = await response.text();
+      const worker = new Worker("worker-solc.js");
+      function compile(source) {
+        worker.postMessage({ soljsonText, source });
+      }
+
+      // Initialize compiler section
+      const compilerHeader = document.getElementById("compilerHeader");
+      const compilerContent = document.getElementById("compilerContent");
+      const toggle = document.querySelector(".toggle");
+      const compileButton = document.getElementById("compileButton");
+      const contractSource = document.getElementById("contractSource");
+      const errorDiv = document.getElementById("error");
+      const successDiv = document.getElementById("success");
+      const bytecodeDiv = document.getElementById("bytecode");
+
+      function getBytecode(output) {
+        const contractObj = output.contracts["viewer.sol"];
+        const contractName = Object.keys(contractObj)[0];
+        const bytecode = contractObj[contractName].evm.deployedBytecode.object;
+        return `0x${bytecode}`;
+      }
+
+      function getABI(output) {
+        const contractObj = output.contracts["viewer.sol"];
+        const contractName = Object.keys(contractObj)[0];
+        const abi = contractObj[contractName].abi;
+        return abi;
+      }
+
+      // Handle worker messages
+      worker.addEventListener("message", (e) => {
+        console.log("message", e);
+        let { type, output, error } = e.data;
+
+        switch (type) {
+          case "initialized":
+            compileButton.disabled = false;
+            break;
+
+          case "success":
+            bytecodeDiv.textContent = getBytecode(output);
+            successDiv.classList.remove("hidden");
+            errorDiv.classList.add("hidden");
+
+            ethCall(
+              contractAddress.value,
+              getABI(output),
+              functionName.value,
+              getBytecode(output)
+            );
+            break;
+
+          case "error":
+            errorDiv.textContent = error;
+            errorDiv.classList.remove("hidden");
+            successDiv.classList.add("hidden");
+            break;
+        }
+
+        compileButton.disabled = false;
+        compileButton.textContent = "Compile Contract";
+      });
+
+      async function doCompile() {
+        try {
+          compileButton.disabled = true;
+          compileButton.textContent = "Compiling...";
+          errorDiv.classList.add("hidden");
+          successDiv.classList.add("hidden");
+
+          const source = contractSource.value.trim();
+          if (!source) {
+            throw new Error("Contract source cannot be empty");
+          }
+
+          await compile(source);
+        } catch (error) {
+          errorDiv.textContent = error.message;
+          errorDiv.classList.remove("hidden");
+          compileButton.disabled = false;
+          compileButton.textContent = "Compile Contract";
+        }
+      }
+
+      compileButton.addEventListener("click", doCompile);
+
+      // Disable compile button until worker is ready
+      compileButton.disabled = true;
+    </script>
+  </body>
+</html>
