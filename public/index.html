@@ -15,43 +15,42 @@
       }
 
       .container {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-      }
-
-      .card {
         background: white;
-        padding: 1.5rem;
+        padding: 2rem;
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       }
 
-      .header {
-        display: flex;
-        justify-content: space-between;
+      .form-group {
+        display: grid;
+        grid-template-columns: 200px 1fr;
+        gap: 1rem;
         align-items: center;
-        cursor: pointer;
+        margin-bottom: 1rem;
       }
 
-      .header h2 {
-        margin: 0;
-        font-size: 1.25rem;
+      label {
+        font-weight: 500;
+        text-align: right;
       }
 
-      input,
-      textarea {
+      input {
         width: 100%;
         padding: 0.75rem;
         border: 1px solid #e2e8f0;
         border-radius: 4px;
-        margin-top: 0.5rem;
         font-family: monospace;
       }
 
-      textarea {
-        height: 400px;
-        resize: vertical;
+      .button-container {
+        display: grid;
+        grid-template-columns: 200px 1fr;
+        gap: 1rem;
+        margin-top: 2rem;
+      }
+
+      .button-container div {
+        text-align: left;
       }
 
       button {
@@ -73,6 +72,15 @@
         cursor: not-allowed;
       }
 
+      .secondary-button {
+        background-color: #4b5563;
+        margin-left: 1rem;
+      }
+
+      .secondary-button:hover {
+        background-color: #374151;
+      }
+
       .error {
         background-color: #fee2e2;
         border: 1px solid #ef4444;
@@ -80,6 +88,7 @@
         padding: 1rem;
         border-radius: 4px;
         margin-top: 1rem;
+        grid-column: 2;
       }
 
       .success {
@@ -90,14 +99,7 @@
         border-radius: 4px;
         margin-top: 1rem;
         overflow-x: auto;
-      }
-
-      pre {
-        white-space: pre-wrap;
-        word-break: break-all;
-        margin: 0;
-        font-family: monospace;
-        font-size: 0.875rem;
+        grid-column: 2;
       }
 
       .hidden {
@@ -107,10 +109,9 @@
   </head>
   <body>
     <h1>Avalanche Add PoA Validator</h1>
-
-    <div class="container">
-      <div class="card">
-        <h2>RPC URL</h2>
+    <form id="validatorForm">
+      <div class="form-group">
+        <label for="rpcUrl">RPC URL</label>
         <input
           type="text"
           id="rpcUrl"
@@ -118,9 +119,8 @@
           placeholder="Enter RPC URL"
         />
       </div>
-
-      <div class="card">
-        <h2>Subnet ID</h2>
+      <div class="form-group">
+        <label for="subnetId">Subnet ID</label>
         <input
           type="text"
           id="subnetId"
@@ -129,8 +129,8 @@
         />
       </div>
 
-      <div class="card">
-        <h2>Blockchain ID</h2>
+      <div class="form-group">
+        <label for="blockchainId">Blockchain ID</label>
         <input
           type="text"
           id="blockchainId"
@@ -139,28 +139,33 @@
         />
       </div>
 
-      <div class="card">
-        <h2>Contract Address</h2>
+      <div class="form-group">
+        <label for="contractAddress">Contract Address</label>
         <input
           type="text"
           id="contractAddress"
           value="0x0feedc0de0000000000000000000000000000000"
-          placeholder="Enter the PoA Validator Managercontract address"
+          placeholder="Enter the PoA Validator Manager contract address"
         />
       </div>
 
-      <div class="card">
-        <h2>Node ID</h2>
+      <div class="form-group">
+        <label for="nodeId">Node ID</label>
         <input type="text" id="nodeId" placeholder="Enter the Node ID" />
       </div>
 
-      <div class="card">
-        <h2>BLS Key</h2>
-        <input type="text" id="blsKey" placeholder="Enter the BLS Key" />
+      <div class="form-group">
+        <label for="weight">Weight</label>
+        <input type="text" id="weight" placeholder="Enter the node weight" />
       </div>
 
-      <div class="card">
-        <h2>BLS Proof of Possession</h2>
+      <div class="form-group">
+        <label for="blsPublicKey">BLS Public Key</label>
+        <input type="text" id="blsPublicKey" placeholder="Enter the BLS Key" />
+      </div>
+
+      <div class="form-group">
+        <label for="blsPoP">BLS Proof of Possession</label>
         <input
           type="text"
           id="blsPoP"
@@ -168,23 +173,84 @@
         />
       </div>
 
-      <div class="card">
-        <h2>P-Chain Address</h2>
+      <div class="form-group">
+        <label for="pchainAddress">P-Chain Address</label>
         <input
           type="text"
           id="pchainAddress"
+          value="P-avax12pdvdwgvx8tzlxc0syvxuph9mp2yuxu9a0uc8d"
           placeholder="Enter the P-Chain Address"
         />
       </div>
 
-      <div class="card">
-        <div style="text-align: right; margin-top: 1rem">
+      <div class="button-container">
+        <div></div>
+        <div>
           <button id="addValidatorButton">Add Validator</button>
+          <button id="addChainButton" type="button" class="secondary-button">
+            Add Chain to Wallet
+          </button>
+          <div id="error" class="error hidden"></div>
         </div>
-        <div id="error" class="error hidden"></div>
       </div>
-    </div>
+    </form>
+    <div id="result"></div>
+    <script type="module">
+      import {
+        initializeValidatorRegistration,
+        addChainToWallet,
+      } from "./add_validator.js";
 
-    <script type="module" src="add_validator.js"></script>
+      const CONTRACT_ADDRESS = document.getElementById("contractAddress").value;
+      const EXPIRY_TIME = Math.floor(Date.now() / 1000) + 24 * 60 * 60;
+
+      document
+        .getElementById("addChainButton")
+        .addEventListener("click", async () => {
+          try {
+            await addChainToWallet();
+            document.getElementById("result").innerHTML = `
+            <div class="success">Chain added to MetaMask successfully!</div>
+          `;
+          } catch (error) {
+            console.error(error);
+            document.getElementById("result").innerHTML = `
+            <div class="error">Failed to add chain: ${error.message}</div>
+          `;
+          }
+        });
+
+      document
+        .getElementById("validatorForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          try {
+            const params = {
+              nodeID: document.getElementById("nodeId").value,
+              blsPublicKey: document.getElementById("blsPublicKey").value,
+              expiry: EXPIRY_TIME,
+              balanceOwner: document.getElementById("pchainAddress").value,
+              disableOwner: document.getElementById("pchainAddress").value,
+              weight: document.getElementById("weight").value,
+            };
+
+            const txHash = await initializeValidatorRegistration(
+              CONTRACT_ADDRESS,
+              params
+            );
+
+            document.getElementById("result").innerHTML = `
+                    Transaction submitted successfully!<br>
+                    Transaction Hash: ${txHash}
+                `;
+          } catch (error) {
+            console.log(error);
+            document.getElementById("result").innerHTML = `
+                    Error: ${error.message}
+                `;
+          }
+        });
+    </script>
   </body>
 </html>
