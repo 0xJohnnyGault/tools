@@ -199,6 +199,7 @@
       import {
         initializeValidatorRegistration,
         addChainToWallet,
+        notifyLancer,
       } from "/js/add_validator.js";
 
       const CONTRACT_ADDRESS = document.getElementById("contractAddress").value;
@@ -225,6 +226,8 @@
         .addEventListener("submit", async (e) => {
           e.preventDefault();
 
+          let txHash;
+
           try {
             const params = {
               nodeID: document.getElementById("nodeId").value,
@@ -235,7 +238,7 @@
               weight: document.getElementById("weight").value,
             };
 
-            const txHash = await initializeValidatorRegistration(
+            txHash = await initializeValidatorRegistration(
               CONTRACT_ADDRESS,
               params
             );
@@ -246,6 +249,28 @@
                 `;
           } catch (error) {
             console.log(error);
+            document.getElementById("result").innerHTML = `
+                    Error: ${error.message}
+                `;
+            return;
+          }
+
+          // Now notify Lancer
+          try {
+            await notifyLancer({
+              network: "mainnet",
+              blockchain_id: document.getElementById("blockchainId").value,
+              tx_id: txHash,
+              node_id: document.getElementById("nodeId").value,
+              bls_pub_key: document.getElementById("blsPublicKey").value,
+              bls_pop: document.getElementById("blsPoP").value,
+            });
+            document.getElementById("result").innerHTML += `
+                    <br>Transaction submitted successfully!<br>
+                    Transaction Hash: ${txHash}
+                `;
+          } catch (error) {
+            console.error(error);
             document.getElementById("result").innerHTML = `
                     Error: ${error.message}
                 `;

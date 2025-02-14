@@ -204,4 +204,37 @@ async function initializeValidatorRegistration(
   }
 }
 
-export { initializeValidatorRegistration, addChainToWallet };
+async function notifyLancer({
+  network,
+  blockchain_id,
+  tx_id,
+  node_id,
+  bls_pub_key,
+  bls_pop,
+}) {
+  const response = await fetch(
+    "https://hosting.multisiglabs.org/lancer-server/initiate_add_validator",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        network,
+        blockchain_id,
+        tx_id,
+        node_id,
+        bls_pub_key,
+        bls_pop,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Failed to notify Lancer: ${response.statusText}`);
+  }
+
+  return await response.json();
+}
+
+export { initializeValidatorRegistration, addChainToWallet, notifyLancer };
