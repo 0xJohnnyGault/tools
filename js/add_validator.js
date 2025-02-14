@@ -191,6 +191,23 @@ async function initializeValidatorRegistration(
       data: data,
     };
 
+    // Try to estimate gas first
+    try {
+      const gasEstimate = await window.ethereum.request({
+        method: "eth_estimateGas",
+        params: [transaction],
+      });
+
+      // Add gas limit with some buffer (1.2x the estimate)
+      transaction.gas = `0x${Math.ceil(Number(gasEstimate) * 1.2).toString(
+        16
+      )}`;
+    } catch (gasError) {
+      console.error("Gas estimation failed:", gasError);
+      // Optionally set a high fixed gas limit as fallback
+      transaction.gas = "0x186A0"; // 100,000 gas
+    }
+
     // Send transaction using the browser wallet
     const txHash = await window.ethereum.request({
       method: "eth_sendTransaction",
