@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Coqnet Validators</title>
+    <title>Coqnet Validators (Mainnet)</title>
     <!-- DataTables CSS -->
     <link
       rel="stylesheet"
@@ -29,6 +29,24 @@
       type="text/javascript"
       src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"
     ></script>
+    <style>
+      body {
+        max-width: 100%;
+        margin: 0;
+        padding: 20px;
+        box-sizing: border-box;
+      }
+
+      table.dataTable {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+
+      .dataTables_wrapper {
+        max-width: 100%;
+        overflow-x: auto;
+      }
+    </style>
   </head>
   <body>
     <p>
@@ -44,12 +62,12 @@
       >
     </p>
 
-    <h1>Coqnet Validators</h1>
+    <h1>Coqnet Validators from L1 RPC (Mainnet)</h1>
     <table id="dataTable" class="display">
       <!-- Table headers will be generated dynamically -->
     </table>
 
-    <script>
+    <script type="module">
       // Function to fetch data using curl (via fetch API)
       async function fetchData() {
         try {
@@ -112,6 +130,99 @@
         ];
 
         $("#dataTable").DataTable({
+          data: data,
+          columns: columns,
+          ordering: true, // Enable sorting
+          searching: true, // Enable search
+          paging: true, // Enable pagination
+          info: true, // Show table information
+          responsive: true, // Make table responsive
+          dom: "Bfrtip", // Add buttons to the table
+          order: [[0, "desc"]], // Add this line to set initial sort
+          buttons: [
+            "copy", // Enable copy to clipboard
+            "excel", // Enable Excel export
+            "csv", // Enable CSV export
+            "pdf", // Enable PDF export
+            "print", // Enable print view
+          ],
+        });
+      }
+
+      // Call fetchData when the page loads
+      fetchData();
+    </script>
+
+    <h1>Coqnet Validators from P-Chain (Mainnet)</h1>
+    <table id="dataTable2" class="display">
+      <!-- Table headers will be generated dynamically -->
+    </table>
+    <script type="module">
+      // Function to fetch data using curl (via fetch API)
+      async function fetchData() {
+        try {
+          const response = await fetch("https://api.avax.network/ext/bc/P", {
+            method: "POST",
+            body: JSON.stringify({
+              jsonrpc: "2.0",
+              method: "platform.getCurrentValidators",
+              params: {
+                subnetID: "5moznRzaAEhzWkNTQVdT1U4Kb9EU7dbsKZQNmHwtN5MGVQRyT",
+              },
+              id: 1,
+            }),
+            headers: {
+              "content-type": "application/json",
+            },
+          });
+          const data = await response.json();
+          initializeDataTable(data.result?.validators);
+        } catch (error) {
+          console.error("Error fetching data:", error);
+        }
+      }
+
+      // Initialize DataTable with the JSON data
+      function initializeDataTable(data) {
+        const allKeys = Object.keys(data[0]).filter(
+          (k) => !k.match(/Owner|publicKey/)
+        );
+
+        const columns = [
+          // Place updated_at column definition first
+          {
+            title: "startTime",
+            data: "startTime",
+            render: function (data, type, row) {
+              if (type === "display") {
+                return new Date(data * 1000).toLocaleString();
+              }
+              return data;
+            },
+          },
+          // Map remaining columns
+          ...allKeys
+            .filter((key) => key !== "startTime")
+            .map((key) => ({
+              title: key,
+              data: key,
+              render: function (data, type, row) {
+                if (type === "display") {
+                  switch (key) {
+                    case "nodeID":
+                      return `<a href="https://subnets.avax.network/coqnet/details" target="_blank">${data}</a>`;
+                    case "balance":
+                      return `${data / 1e9} AVAX`;
+                    default:
+                      return data;
+                  }
+                }
+                return data;
+              },
+            })),
+        ];
+
+        $("#dataTable2").DataTable({
           data: data,
           columns: columns,
           ordering: true, // Enable sorting
