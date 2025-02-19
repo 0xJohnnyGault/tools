@@ -29,6 +29,21 @@
       type="text/javascript"
       src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"
     ></script>
+    <!-- Add Font Awesome for the copy icon -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+    <style>
+      .copy-btn {
+        cursor: pointer;
+        margin-left: 5px;
+        color: #666;
+      }
+      .copy-btn:hover {
+        color: #333;
+      }
+    </style>
   </head>
   <body>
     <p>
@@ -50,6 +65,41 @@
     </table>
 
     <script>
+      // Add this function before the fetchData function
+      function copyToClipboard(text) {
+        navigator.clipboard
+          .writeText(text)
+          .then(() => {
+            // Optional: You could add a temporary tooltip or notification here
+            console.log("Copied to clipboard");
+          })
+          .catch((err) => {
+            console.error("Failed to copy:", err);
+          });
+      }
+
+      function getFormattedLink(key, data, row) {
+        switch (key) {
+          case "evm_init_val_reg_tx_id":
+          case "evm_complete_reg_tx_id":
+            return `<a href="https://${
+              row.network === "fuji" ? "testnet." : ""
+            }snowtrace.io/tx/${data}" target="_blank">${data.substring(
+              0,
+              8
+            )}...</a>`;
+          case "p_reg_l1_validator_tx_id":
+            return `<a href="https://subnets${
+              row.network === "fuji" ? "-test" : ""
+            }.avax.network/p-chain/tx/${data}" target="_blank">${data.substring(
+              0,
+              8
+            )}...</a>`;
+          case "node_id":
+            return `<a href="https://subnets.avax.network/${row.name}/details" target="_blank">${data}</a>`;
+        }
+      }
+
       // Function to fetch data using curl (via fetch API)
       async function fetchData() {
         try {
@@ -99,28 +149,14 @@
                 if (type === "display") {
                   switch (key) {
                     case "evm_init_val_reg_tx_id":
-                      return `<a href="https://${
-                        row.network === "fuji" ? "testnet." : ""
-                      }snowtrace.io/tx/${data}" target="_blank">${data.substring(
-                        0,
-                        6
-                      )}...</a>`;
                     case "evm_complete_reg_tx_id":
-                      return `<a href="https://${
-                        row.network === "fuji" ? "testnet." : ""
-                      }snowtrace.io/tx/${data}" target="_blank">${data.substring(
-                        0,
-                        6
-                      )}...</a>`;
                     case "p_reg_l1_validator_tx_id":
-                      return `<a href="https://subnets${
-                        row.network === "fuji" ? "-test" : ""
-                      }.avax.network/p-chain/tx/${data}" target="_blank">${data.substring(
-                        0,
-                        6
-                      )}...</a>`;
+                      return `<span>
+                        ${getFormattedLink(key, data, row)}
+                        <i class="fas fa-copy copy-btn" onclick="copyToClipboard('${data}')" title="Copy to clipboard"></i>
+                      </span>`;
                     case "node_id":
-                      return `<a href="https://subnets.avax.network/${row.name}/details" target="_blank">${data}</a>`;
+                      return `${getFormattedLink(key, data, row)}`;
                     default:
                       return data;
                   }
