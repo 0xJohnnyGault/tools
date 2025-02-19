@@ -242,7 +242,7 @@ mapping(bytes32 => address) private addressStorage;
         "https://binaries.soliditylang.org/emscripten-wasm32/solc-emscripten-wasm32-v0.8.19+commit.7dd6d404.js"
       );
       const soljsonText = await response.text();
-      const worker = new Worker("worker-solc.js");
+      const worker = new Worker("js/worker-solc.js");
       function compile(source) {
         worker.postMessage({ soljsonText, source });
       }
