@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Avalanche Add PoA Validator</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+        background-color: #f5f5f5;
+      }
+
+      .container {
+        background: white;
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .form-group {
+        display: grid;
+        grid-template-columns: 200px 1fr;
+        gap: 1rem;
+        align-items: center;
+        margin-bottom: 1rem;
+      }
+
+      label {
+        font-weight: 500;
+        text-align: right;
+      }
+
+      input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 4px;
+        font-family: monospace;
+      }
+
+      .button-container {
+        display: grid;
+        grid-template-columns: 200px 1fr;
+        gap: 1rem;
+        margin-top: 2rem;
+      }
+
+      .button-container div {
+        text-align: left;
+      }
+
+      button {
+        background-color: #3b82f6;
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1rem;
+      }
+
+      button:hover {
+        background-color: #2563eb;
+      }
+
+      button:disabled {
+        background-color: #93c5fd;
+        cursor: not-allowed;
+      }
+
+      .secondary-button {
+        background-color: #4b5563;
+        margin-left: 1rem;
+      }
+
+      .secondary-button:hover {
+        background-color: #374151;
+      }
+
+      .error {
+        background-color: #fee2e2;
+        border: 1px solid #ef4444;
+        color: #b91c1c;
+        padding: 1rem;
+        border-radius: 4px;
+        margin-top: 1rem;
+        grid-column: 2;
+      }
+
+      .success {
+        background-color: #dcfce7;
+        border: 1px solid #22c55e;
+        color: #15803d;
+        padding: 1rem;
+        border-radius: 4px;
+        margin-top: 1rem;
+        overflow-x: auto;
+        grid-column: 2;
+      }
+
+      .hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Avalanche Add PoA Validator</h1>
+    <pre><code>
+      function initializeValidatorRegistration( 
+        ValidatorRegistrationInput calldata registrationInput, 
+        uint64 weight 
+      )
+    </code>
+    </pre>
+    <form id="validatorForm">
+      <div class="form-group">
+        <label for="rpcUrl">RPC URL</label>
+        <input
+          type="text"
+          id="rpcUrl"
+          value="https://subnets.avax.network/etx/mainnet/rpc"
+          placeholder="Enter RPC URL"
+        />
+      </div>
+      <div class="form-group">
+        <label for="subnetId">Subnet ID</label>
+        <input
+          type="text"
+          id="subnetId"
+          value="q54cgHa9RN2NFp9qsfpPzVkhgn8xqDgKEQR1G997xZ1P5Dc8o"
+          placeholder="Enter the SubnetID"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="blockchainId">Blockchain ID</label>
+        <input
+          type="text"
+          id="blockchainId"
+          value="2R87vuaaRZRxPLdvdMEpo7fH9qyyNnP34h4nyxuwq8sKkQ1GaE"
+          placeholder="Enter the BlockchainID"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="contractAddress">Contract Address</label>
+        <input
+          type="text"
+          id="contractAddress"
+          value="0x0feedc0de0000000000000000000000000000000"
+          placeholder="Enter the PoA Validator Manager contract address"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="nodeId">Node ID</label>
+        <input type="text" id="nodeId" placeholder="Enter the Node ID" />
+      </div>
+
+      <div class="form-group">
+        <label for="weight">Weight</label>
+        <input type="text" id="weight" placeholder="Enter the node weight" />
+      </div>
+
+      <div class="form-group">
+        <label for="blsPublicKey">BLS Public Key</label>
+        <input type="text" id="blsPublicKey" placeholder="Enter the BLS Key" />
+      </div>
+
+      <div class="form-group">
+        <label for="blsPoP">BLS Proof of Possession</label>
+        <input
+          type="text"
+          id="blsPoP"
+          placeholder="Enter the BLS Proof of Possession"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="pchainAddress">P-Chain Address</label>
+        <input
+          type="text"
+          id="pchainAddress"
+          value="P-avax12pdvdwgvx8tzlxc0syvxuph9mp2yuxu9a0uc8d"
+          placeholder="Enter the P-Chain Address"
+        />
+      </div>
+
+      <div class="button-container">
+        <div></div>
+        <div>
+          <button id="addValidatorButton">Add Validator</button>
+          <button id="addChainButton" type="button" class="secondary-button">
+            Add Chain to Wallet
+          </button>
+          <div id="error" class="error hidden"></div>
+        </div>
+      </div>
+    </form>
+    <div id="result"></div>
+    <script type="module">
+      import {
+        initializeValidatorRegistration,
+        addChainToWallet,
+        notifyLancer,
+      } from "./js/add_validator.js";
+
+      const CONTRACT_ADDRESS = document.getElementById("contractAddress").value;
+      const EXPIRY_TIME = Math.floor(Date.now() / 1000) + 24 * 60 * 60;
+
+      document
+        .getElementById("addChainButton")
+        .addEventListener("click", async () => {
+          try {
+            await addChainToWallet();
+            document.getElementById("result").innerHTML = `
+            <div class="success">Chain added to MetaMask successfully!</div>
+          `;
+          } catch (error) {
+            console.error(error);
+            document.getElementById("result").innerHTML = `
+            <div class="error">Failed to add chain: ${error.message}</div>
+          `;
+          }
+        });
+
+      document
+        .getElementById("validatorForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          let txHash;
+
+          try {
+            const params = {
+              nodeID: document.getElementById("nodeId").value,
+              blsPublicKey: document.getElementById("blsPublicKey").value,
+              expiry: EXPIRY_TIME,
+              balanceOwner: document.getElementById("pchainAddress").value,
+              disableOwner: document.getElementById("pchainAddress").value,
+              weight: document.getElementById("weight").value,
+            };
+
+            txHash = await initializeValidatorRegistration(
+              CONTRACT_ADDRESS,
+              params
+            );
+
+            document.getElementById("result").innerHTML = `
+                    Transaction submitted successfully!<br>
+                    Transaction Hash: ${txHash}
+                `;
+          } catch (error) {
+            console.log(error);
+            document.getElementById("result").innerHTML = `
+                    Error: ${error.message}
+                `;
+            return;
+          }
+
+          // Now notify Lancer
+          try {
+            await notifyLancer({
+              network: "mainnet",
+              blockchain_id: document.getElementById("blockchainId").value,
+              tx_id: txHash,
+              node_id: document.getElementById("nodeId").value,
+              bls_pub_key: document.getElementById("blsPublicKey").value,
+              bls_pop: document.getElementById("blsPoP").value,
+            });
+            document.getElementById("result").innerHTML += `
+                    <br>Transaction submitted successfully!<br>
+                    Transaction Hash: ${txHash}
+                `;
+          } catch (error) {
+            console.error(error);
+            document.getElementById("result").innerHTML = `
+                    Error: ${error.message}
+                `;
+          }
+        });
+    </script>
+  </body>
+</html>

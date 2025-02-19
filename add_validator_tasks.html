@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>JSON Data Table</title>
+    <!-- DataTables CSS -->
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.css"
+    />
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css"
+    />
+
+    <!-- jQuery -->
+    <script
+      type="text/javascript"
+      src="https://code.jquery.com/jquery-3.7.0.min.js"
+    ></script>
+    <!-- DataTables JS -->
+    <script
+      type="text/javascript"
+      src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"
+    ></script>
+    <!-- DataTables Buttons -->
+    <script
+      type="text/javascript"
+      src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"
+    ></script>
+  </head>
+  <body>
+    <table id="dataTable" class="display">
+      <!-- Table headers will be generated dynamically -->
+    </table>
+
+    <script>
+      // Function to fetch data using curl (via fetch API)
+      async function fetchData() {
+        try {
+          const response = await fetch(
+            "https://sstqretxgcehhfbdjwcz.supabase.co/rest/v1/add_validator_tasks_view",
+            {
+              method: "GET",
+              headers: {
+                apikey:
+                  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzdHFyZXR4Z2NlaGhmYmRqd2N6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTk0MjQ0MzksImV4cCI6MjAzNTAwMDQzOX0.xIab8CXMlXf7SzsoW1DieuAkDI5GOIAwD9uA1z7Zz9k",
+                "content-type": "application/json",
+              },
+            }
+          );
+          const data = await response.json();
+          initializeDataTable(data);
+        } catch (error) {
+          console.error("Error fetching data:", error);
+        }
+      }
+
+      // Initialize DataTable with the JSON data
+      function initializeDataTable(data) {
+        // Get all column keys except 'id'
+        const allKeys = Object.keys(data[0]).filter((key) => key !== "id");
+
+        // Remove updated_at from the array and create columns array with updated_at first
+        const columns = [
+          // Place updated_at column definition first
+          {
+            title: "updated_at",
+            data: "updated_at",
+            render: function (data, type, row) {
+              if (type === "display") {
+                return new Date(data).toLocaleString();
+              }
+              return data;
+            },
+          },
+          // Map remaining columns
+          ...allKeys
+            .filter((key) => key !== "updated_at")
+            .map((key) => ({
+              title: key,
+              data: key,
+              render: function (data, type, row) {
+                if (type === "display") {
+                  switch (key) {
+                    case "evm_init_val_reg_tx_id":
+                      return `<a href="https://${
+                        row.network === "fuji" ? "testnet." : ""
+                      }snowtrace.io/tx/${data}" target="_blank">${data.substring(
+                        0,
+                        6
+                      )}...</a>`;
+                    case "evm_complete_reg_tx_id":
+                      return `<a href="https://${
+                        row.network === "fuji" ? "testnet." : ""
+                      }snowtrace.io/tx/${data}" target="_blank">${data.substring(
+                        0,
+                        6
+                      )}...</a>`;
+                    case "p_reg_l1_validator_tx_id":
+                      return `<a href="https://subnets${
+                        row.network === "fuji" ? "-test" : ""
+                      }.avax.network/p-chain/tx/${data}" target="_blank">${data.substring(
+                        0,
+                        6
+                      )}...</a>`;
+                    case "node_id":
+                      return `<a href="https://subnets.avax.network/${row.name}/details" target="_blank">${data}</a>`;
+                    default:
+                      return data;
+                  }
+                }
+                return data;
+              },
+            })),
+        ];
+
+        $("#dataTable").DataTable({
+          data: data,
+          columns: columns,
+          ordering: true, // Enable sorting
+          searching: true, // Enable search
+          paging: true, // Enable pagination
+          info: true, // Show table information
+          responsive: true, // Make table responsive
+          dom: "Bfrtip", // Add buttons to the table
+          order: [[0, "desc"]], // Add this line to set initial sort
+          buttons: [
+            "copy", // Enable copy to clipboard
+            "excel", // Enable Excel export
+            "csv", // Enable CSV export
+            "pdf", // Enable PDF export
+            "print", // Enable print view
+          ],
+        });
+      }
+
+      // Call fetchData when the page loads
+      fetchData();
+    </script>
+  </body>
+</html>
