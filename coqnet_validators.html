@@ -161,7 +161,7 @@
             const addressBook = await fetchAddressBook();
             data = data.map((validator) => ({
               ...validator,
-              ownerName: addressBook[validator.owner.toLowerCase()],
+              ownerName: addressBook[validator.owner.toLowerCase()] || "",
             }));
             initializeDataTable(data);
           } catch (error) {
@@ -171,8 +171,7 @@
 
         // Initialize DataTable with the JSON data
         function initializeDataTable(data) {
-          const allKeys = Object.keys(data[0]).filter((k) => !k.match(/ownerName|Owner|publicKey/));
-
+          const allKeys = Object.keys(data[0]); //.filter((k) => !k.match(/Owner|publicKey/));
           const columns = [
             // Place updated_at column definition first
             {
@@ -221,6 +220,13 @@
             autoWidth: false, // Prevent auto-width calculation
             pageLength: 50,
             order: [[0, "desc"]], // Add this line to set initial sort
+            columnDefs: [
+              {
+                // Hide columns you don't want to display but want searchable
+                targets: [3, 4, 5, 10], // Add indexes of hidden columns
+                visible: false,
+              },
+            ],
           });
         }
 
