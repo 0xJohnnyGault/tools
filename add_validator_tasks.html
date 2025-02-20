@@ -53,13 +53,21 @@
         <a href="/tools" style="color: #0066cc; text-decoration: none; margin-bottom: 20px; display: inline-block">&larr; Back to Home</a>
       </p>
 
-      <h1>Add Validator Tasks Log</h1>
+      <div style="display: flex; align-items: center; gap: 20px">
+        <h1>Add Validator Tasks Log</h1>
+        <div id="balance-container" class="p-2 rounded bg-success bg-opacity-25" style="width: 200px"></div>
+        <div id="addresses-container" class="p-2 rounded bg-light bg-opacity-25">
+          <div>C: 0xf58661401869F726f6F38347A6353A9EF71f6eD9</div>
+          <div>P: avax1dnz5utgnay0znpnc2y3c4zhkc572f2dlkwapg8</div>
+        </div>
+      </div>
       <table id="dataTable" class="table" style="width: 100%">
         <!-- Table headers will be generated dynamically -->
       </table>
 
       <script type="module">
         import { copyToClipboard, getSnowtraceAddressLink, getSnowtraceTxLink, getAvaxPLink, getAvaxCLink, getNodeIDLink } from "./js/utils.js";
+        import { getEthBalance, getPChainBalance } from "./js/web3.js";
 
         // Function to fetch data using curl (via fetch API)
         async function fetchData() {
@@ -73,6 +81,16 @@
             });
             const data = await response.json();
             initializeDataTable(data);
+
+            const balanceContainer = document.getElementById("balance-container");
+            const cBalance = await getEthBalance("0xf58661401869F726f6F38347A6353A9EF71f6eD9");
+            const pBalance = await getPChainBalance("P-avax1dnz5utgnay0znpnc2y3c4zhkc572f2dlkwapg8");
+            balanceContainer.innerHTML = `Gas Money C: ${cBalance} P: ${pBalance}`;
+
+            balanceContainer.classList.add("p-2", "rounded");
+            if (parseFloat(cBalance) < 1 || parseFloat(pBalance) < 1) {
+              balanceContainer.classList.add("bg-danger", "bg-opacity-25");
+            }
           } catch (error) {
             console.error("Error fetching data:", error);
           }

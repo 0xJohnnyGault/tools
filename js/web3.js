@@ -1,4 +1,4 @@
-import { createPublicClient, getContract, decodeFunctionResult, http, parseAbi } from "https://esm.sh/viem";
+import { createPublicClient, getContract, decodeFunctionResult, http, parseAbi, formatEther } from "https://esm.sh/viem";
 import { avalanche } from "https://esm.sh/viem/chains";
 import { base58 } from "https://esm.sh/@scure/base";
 
@@ -37,4 +37,16 @@ async function getOwners(validationIDs) {
   return ownerMap;
 }
 
-export { publicClient, getOwners };
+async function getEthBalance(address) {
+  const balance = await publicClient.getBalance({ address });
+  return Number(formatEther(balance)).toFixed(2);
+}
+
+async function getPChainBalance(address) {
+  const data = await fetch(`https://glacier-api.avax.network/v1/networks/mainnet/blockchains/p-chain/balances?addresses=${address}`);
+  const json = await data.json();
+  const amt = json?.balances?.unlockedUnstaked[0]?.amount || 0;
+  return Number(Number(amt) / 10 ** 9).toFixed(2);
+}
+
+export { publicClient, getOwners, getEthBalance, getPChainBalance };

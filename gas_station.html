@@ -58,6 +58,11 @@
         <h1>Gas Station</h1>
         <a href="https://snowtrace.io/address/0x27Ce13Ed07c367258E0E65EB932DfFCb84f62b7e" class="btn btn-sm btn-outline-info" target="_blank">Mainnet</a>
         <a href="https://testnet.snowtrace.io/address/0xBac9d1B636140863122bE643E5d041Ef0FF28Ec2" class="btn btn-sm btn-outline-info" target="_blank">Fuji</a>
+        <div id="balance-container" class="p-2 rounded bg-success bg-opacity-25" style="width: 200px"></div>
+        <div id="addresses-container" class="p-2 rounded bg-light bg-opacity-25">
+          <div>C: 0x2dE85a90e8A302b77AE91A94aD5fb0733CcA4F47</div>
+          <div>P: avax1n7229c2jscv39fkwq954tzsjkywxcwxtq96hae</div>
+        </div>
       </div>
       <table id="dataTable" class="table" style="width: 100%">
         <!-- Table headers will be generated dynamically -->
@@ -65,8 +70,8 @@
 
       <script type="module">
         import { copyToClipboard, getSnowtraceAddressLink, getSnowtraceTxLink, getAvaxPLink, getAvaxCLink, getNodeIDLink } from "./js/utils.js";
+        import { getEthBalance, getPChainBalance } from "./js/web3.js";
 
-        // Function to fetch data using curl (via fetch API)
         async function fetchData() {
           try {
             const response = await fetch("https://sstqretxgcehhfbdjwcz.supabase.co/rest/v1/gas_station_state_view", {
@@ -78,6 +83,18 @@
             });
             const data = await response.json();
             initializeDataTable(data);
+
+            const balanceContainer = document.getElementById("balance-container");
+            const cBalance = await getEthBalance("0x2dE85a90e8A302b77AE91A94aD5fb0733CcA4F47");
+            const pBalance = await getPChainBalance("P-avax1n7229c2jscv39fkwq954tzsjkywxcwxtq96hae");
+            balanceContainer.innerHTML = `Gas Money C: ${cBalance} P: ${pBalance}`;
+
+            balanceContainer.classList.add("p-2", "rounded");
+            if (parseFloat(cBalance) < 1 || parseFloat(pBalance) < 1) {
+              balanceContainer.classList.add("bg-danger", "bg-opacity-25");
+            } else {
+              balanceContainer.classList.add("bg-success", "bg-opacity-25");
+            }
           } catch (error) {
             console.error("Error fetching data:", error);
           }
@@ -144,12 +161,13 @@
             ],
             columnDefs: [
               { targets: [0, 1, 2], width: "20px" },
-              { targets: [4], width: "50px" },
               { targets: [3], width: "70px" },
+              { targets: [4], width: "50px" },
               {
-                targets: [6, 7, 8, 9, 10],
+                targets: [6, 7, 8, 9],
                 width: "100px",
               },
+              { targets: [-1], visible: false },
             ],
           });
         }
