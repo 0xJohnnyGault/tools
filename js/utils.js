@@ -73,4 +73,14 @@ function getNodeIDLink(data, type, row) {
   return `<a href="https://subnets.avax.network/${row.name}/details" target="_blank">${data}</a>`;
 }
 
-export { copyToClipboard, getSnowtraceAddressLink, getSnowtraceTxLink, getAvaxPLink, getAvaxCLink, getNodeIDLink, fetchAddressBook };
+function contracts() {
+  return {
+    mainnet: {
+      gas_station: "0x27Ce13Ed07c367258E0E65EB932DfFCb84f62b7e",
+    },
+    fuji: {
+      gas_station: "0xBac9d1B636140863122bE643E5d041Ef0FF28Ec2",
+    },
+  };
+}
+export { contracts, copyToClipboard, getSnowtraceAddressLink, getSnowtraceTxLink, getAvaxPLink, getAvaxCLink, getNodeIDLink, fetchAddressBook };

@@ -54,7 +54,11 @@
         <a href="/tools" style="color: #0066cc; text-decoration: none; margin-bottom: 20px; display: inline-block">&larr; Back to Home</a>
       </p>
 
-      <h1>Gas Station</h1>
+      <div style="display: flex; align-items: center; gap: 20px">
+        <h1>Gas Station</h1>
+        <a href="https://snowtrace.io/address/0x27Ce13Ed07c367258E0E65EB932DfFCb84f62b7e" class="btn btn-sm btn-outline-info" target="_blank">Mainnet</a>
+        <a href="https://testnet.snowtrace.io/address/0xBac9d1B636140863122bE643E5d041Ef0FF28Ec2" class="btn btn-sm btn-outline-info" target="_blank">Fuji</a>
+      </div>
       <table id="dataTable" class="table" style="width: 100%">
         <!-- Table headers will be generated dynamically -->
       </table>
@@ -139,11 +143,11 @@
               },
             ],
             columnDefs: [
-              { targets: [0, 1, 3], width: "20px" },
+              { targets: [0, 1, 2], width: "20px" },
               { targets: [4], width: "50px" },
-              { targets: [2], width: "70px" },
+              { targets: [3], width: "70px" },
               {
-                targets: [5, 6, 7, 8, 9],
+                targets: [6, 7, 8, 9, 10],
                 width: "100px",
               },
             ],
