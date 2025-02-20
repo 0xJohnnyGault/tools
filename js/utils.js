@@ -1,3 +1,31 @@
+async function fetchAddressBook() {
+  const apiKey = localStorage.getItem("coqnetApiKey");
+  if (!apiKey) {
+    return {};
+  }
+
+  try {
+    const response = await fetch(`https://sstqretxgcehhfbdjwcz.supabase.co/rest/v1/address_book`, {
+      headers: {
+        apikey: apiKey,
+        "Content-Type": "application/json",
+      },
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    let addressBook = {};
+    data.forEach((row) => {
+      addressBook[row.address.toLowerCase()] = row.name;
+    });
+    return addressBook;
+  } catch (error) {
+    console.error("Failed to fetch address book:", error);
+    return {};
+  }
+}
+
 function copyToClipboard(text) {
   navigator.clipboard
     .writeText(text)
@@ -45,4 +73,4 @@ function getNodeIDLink(data, type, row) {
   return `<a href="https://subnets.avax.network/${row.name}/details" target="_blank">${data}</a>`;
 }
 
-export { copyToClipboard, getSnowtraceAddressLink, getSnowtraceTxLink, getAvaxPLink, getAvaxCLink, getNodeIDLink };
+export { copyToClipboard, getSnowtraceAddressLink, getSnowtraceTxLink, getAvaxPLink, getAvaxCLink, getNodeIDLink, fetchAddressBook };

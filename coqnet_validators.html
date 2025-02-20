@@ -45,18 +45,86 @@
       .copy-btn:hover {
         color: #333;
       }
+      .api-key-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .api-key-input {
+        padding: 5px;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+      }
+      .api-key-locked {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 10px;
+        background-color: #e9ecef;
+        border-radius: 4px;
+      }
+      .delete-key {
+        cursor: pointer;
+        color: #dc3545;
+      }
     </style>
   </head>
   <body>
+    <div class="api-key-container" id="apiKeyContainer">
+      <input type="text" id="apiKeyInput" class="api-key-input" placeholder="Enter API Key" style="display: none" />
+      <div id="apiKeyLocked" class="api-key-locked" style="display: none">
+        <i class="fas fa-lock"></i>
+        <i class="fas fa-times delete-key" id="deleteKey"></i>
+      </div>
+    </div>
+
     <section class="section" style="margin-top: 50px">
       <h1>Coqnet Validators from P-Chain (Mainnet)</h1>
       <table id="dataTable2" class="table" style="width: 100%">
         <!-- Table headers will be generated dynamically -->
       </table>
       <script type="module">
-        import { getSnowtraceAddressLink } from "./js/utils.js";
+        import { getSnowtraceAddressLink, fetchAddressBook } from "./js/utils.js";
         import { getOwners } from "./js/web3.js";
-        // Function to fetch data using curl (via fetch API)
+
+        // Check for stored API key on page load
+        document.addEventListener("DOMContentLoaded", function () {
+          const apiKey = localStorage.getItem("coqnetApiKey");
+          const apiKeyInput = document.getElementById("apiKeyInput");
+          const apiKeyLocked = document.getElementById("apiKeyLocked");
+
+          if (apiKey) {
+            apiKeyInput.style.display = "none";
+            apiKeyLocked.style.display = "flex";
+          } else {
+            apiKeyInput.style.display = "block";
+            apiKeyLocked.style.display = "none";
+          }
+
+          // Handle input events
+          apiKeyInput.addEventListener("keypress", function (e) {
+            if (e.key === "Enter") {
+              const key = this.value.trim();
+              if (key) {
+                localStorage.setItem("coqnetApiKey", key);
+                this.style.display = "none";
+                apiKeyLocked.style.display = "flex";
+              }
+            }
+          });
+
+          // Handle delete key
+          document.getElementById("deleteKey").addEventListener("click", function () {
+            localStorage.removeItem("coqnetApiKey");
+            apiKeyLocked.style.display = "none";
+            apiKeyInput.style.display = "block";
+            apiKeyInput.value = "";
+          });
+        });
+
         async function fetchData() {
           try {
             const response = await fetch("https://api.avax.network/ext/bc/P", {
@@ -76,6 +144,7 @@
             const result = await response.json();
             let data = result.result.validators;
 
+            // Get owner data from validatormanager contract
             const validationIDs = data.map((v) => v.validationID);
             const ownersMap = await getOwners(validationIDs);
             // Add owner field to each validator
@@ -84,6 +153,12 @@
               owner: ownersMap[validator.validationID],
             }));
 
+            // Enrich data with address book
+            const addressBook = await fetchAddressBook();
+            data = data.map((validator) => ({
+              ...validator,
+              ownerName: addressBook[validator.owner.toLowerCase()],
+            }));
             initializeDataTable(data);
           } catch (error) {
             console.error("Error fetching data:", error);
@@ -92,7 +167,7 @@
 
         // Initialize DataTable with the JSON data
         function initializeDataTable(data) {
-          const allKeys = Object.keys(data[0]).filter((k) => !k.match(/Owner|publicKey/));
+          const allKeys = Object.keys(data[0]).filter((k) => !k.match(/ownerName|Owner|publicKey/));
 
           const columns = [
             // Place updated_at column definition first
@@ -120,7 +195,7 @@
                       case "balance":
                         return `${(data / 1e9).toFixed(2)} AVAX`;
                       case "owner":
-                        return data.match(/^0x[0]{40}$/) ? "" : `<a href="https://${row.network === "fuji" ? "testnet." : ""}snowtrace.io/address/${data}" target="_blank">${data}</a>`;
+                        return data.match(/^0x[0]{40}$/) ? "" : `<a href="https://${row.network === "fuji" ? "testnet." : ""}snowtrace.io/address/${data}" target="_blank">${row.ownerName || data}</a>`;
                       default:
                         return data;
                     }
