@@ -48,6 +48,108 @@
     </style>
   </head>
   <body>
+    <section class="section" style="margin-top: 50px">
+      <h1>Coqnet Validators from P-Chain (Mainnet)</h1>
+      <table id="dataTable2" class="table" style="width: 100%">
+        <!-- Table headers will be generated dynamically -->
+      </table>
+      <script type="module">
+        import { getSnowtraceAddressLink } from "./js/utils.js";
+        import { getOwners } from "./js/web3.js";
+        // Function to fetch data using curl (via fetch API)
+        async function fetchData() {
+          try {
+            const response = await fetch("https://api.avax.network/ext/bc/P", {
+              method: "POST",
+              body: JSON.stringify({
+                jsonrpc: "2.0",
+                method: "platform.getCurrentValidators",
+                params: {
+                  subnetID: "5moznRzaAEhzWkNTQVdT1U4Kb9EU7dbsKZQNmHwtN5MGVQRyT",
+                },
+                id: 1,
+              }),
+              headers: {
+                "content-type": "application/json",
+              },
+            });
+            const result = await response.json();
+            let data = result.result.validators;
+
+            const validationIDs = data.map((v) => v.validationID);
+            const ownersMap = await getOwners(validationIDs);
+            // Add owner field to each validator
+            data = data.map((validator) => ({
+              ...validator,
+              owner: ownersMap[validator.validationID],
+            }));
+
+            initializeDataTable(data);
+          } catch (error) {
+            console.error("Error fetching data:", error);
+          }
+        }
+
+        // Initialize DataTable with the JSON data
+        function initializeDataTable(data) {
+          const allKeys = Object.keys(data[0]).filter((k) => !k.match(/Owner|publicKey/));
+
+          const columns = [
+            // Place updated_at column definition first
+            {
+              title: "startTime",
+              data: "startTime",
+              render: function (data, type, row) {
+                if (type === "display") {
+                  return new Date(data * 1000).toLocaleString();
+                }
+                return data;
+              },
+            },
+            // Map remaining columns
+            ...allKeys
+              .filter((key) => key !== "startTime")
+              .map((key) => ({
+                title: key,
+                data: key,
+                render: function (data, type, row) {
+                  if (type === "display") {
+                    switch (key) {
+                      case "nodeID":
+                        return `<a href="https://subnets.avax.network/coqnet/details" target="_blank">${data}</a>`;
+                      case "balance":
+                        return `${(data / 1e9).toFixed(2)} AVAX`;
+                      case "owner":
+                        return data.match(/^0x[0]{40}$/) ? "" : `<a href="https://${row.network === "fuji" ? "testnet." : ""}snowtrace.io/address/${data}" target="_blank">${data}</a>`;
+                      default:
+                        return data;
+                    }
+                  }
+                  return data;
+                },
+              })),
+          ];
+
+          $("#dataTable2").DataTable({
+            data: data,
+            columns: columns,
+            ordering: true, // Enable sorting
+            searching: true, // Enable search
+            paging: true, // Enable pagination
+            info: true, // Show table information
+            responsive: false, // Make table responsive
+            scrollX: true, // Add horizontal scrolling
+            autoWidth: false, // Prevent auto-width calculation
+            pageLength: 50,
+            order: [[0, "desc"]], // Add this line to set initial sort
+          });
+        }
+
+        // Call fetchData when the page loads
+        fetchData();
+      </script>
+    </section>
+
     <section class="section">
       <p>
         <a href="/tools" style="color: #0066cc; text-decoration: none; margin-bottom: 20px; display: inline-block">&larr; Back to Home</a>
@@ -134,93 +236,6 @@
                 $(row).addClass("table-danger"); // Bootstrap's red background class
               }
             },
-          });
-        }
-
-        // Call fetchData when the page loads
-        fetchData();
-      </script>
-    </section>
-    <section class="section" style="margin-top: 50px">
-      <h1>Coqnet Validators from P-Chain (Mainnet)</h1>
-      <table id="dataTable2" class="table" style="width: 100%">
-        <!-- Table headers will be generated dynamically -->
-      </table>
-      <script type="module">
-        // Function to fetch data using curl (via fetch API)
-        async function fetchData() {
-          try {
-            const response = await fetch("https://api.avax.network/ext/bc/P", {
-              method: "POST",
-              body: JSON.stringify({
-                jsonrpc: "2.0",
-                method: "platform.getCurrentValidators",
-                params: {
-                  subnetID: "5moznRzaAEhzWkNTQVdT1U4Kb9EU7dbsKZQNmHwtN5MGVQRyT",
-                },
-                id: 1,
-              }),
-              headers: {
-                "content-type": "application/json",
-              },
-            });
-            const data = await response.json();
-            initializeDataTable(data.result?.validators);
-          } catch (error) {
-            console.error("Error fetching data:", error);
-          }
-        }
-
-        // Initialize DataTable with the JSON data
-        function initializeDataTable(data) {
-          const allKeys = Object.keys(data[0]).filter((k) => !k.match(/Owner|publicKey/));
-
-          const columns = [
-            // Place updated_at column definition first
-            {
-              title: "startTime",
-              data: "startTime",
-              render: function (data, type, row) {
-                if (type === "display") {
-                  return new Date(data * 1000).toLocaleString();
-                }
-                return data;
-              },
-            },
-            // Map remaining columns
-            ...allKeys
-              .filter((key) => key !== "startTime")
-              .map((key) => ({
-                title: key,
-                data: key,
-                render: function (data, type, row) {
-                  if (type === "display") {
-                    switch (key) {
-                      case "nodeID":
-                        return `<a href="https://subnets.avax.network/coqnet/details" target="_blank">${data}</a>`;
-                      case "balance":
-                        return `${data / 1e9} AVAX`;
-                      default:
-                        return data;
-                    }
-                  }
-                  return data;
-                },
-              })),
-          ];
-
-          $("#dataTable2").DataTable({
-            data: data,
-            columns: columns,
-            ordering: true, // Enable sorting
-            searching: true, // Enable search
-            paging: true, // Enable pagination
-            info: true, // Show table information
-            responsive: false, // Make table responsive
-            scrollX: true, // Add horizontal scrolling
-            autoWidth: false, // Prevent auto-width calculation
-            pageLength: 50,
-            order: [[0, "desc"]], // Add this line to set initial sort
           });
         }
 
