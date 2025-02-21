@@ -23,13 +23,17 @@
         padding: 20px;
         box-sizing: border-box;
       }
-      #dataTable {
+      .dataTable {
         width: 100% !important;
         overflow-x: auto;
       }
-      #dataTable td,
-      #dataTable th {
+      .dataTable td,
+      .dataTable th {
         white-space: nowrap;
+      }
+      .dataTable .trunc {
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       .dataTables_wrapper {
@@ -173,23 +177,14 @@
 
         // Initialize DataTable with the JSON data
         function initializeDataTable(data) {
-          const allKeys = Object.keys(data[0]); //.filter((k) => !k.match(/Owner|publicKey/));
-          const columns = [
-            // Place updated_at column definition first
-            {
-              title: "startTime",
-              data: "startTime",
-              render: function (data, type, row) {
-                if (type === "display") {
-                  return new Date(data * 1000).toLocaleString();
-                }
-                return data;
-              },
-            },
-            // Map remaining columns
-            ...allKeys
-              .filter((key) => key !== "startTime")
-              .map((key) => ({
+          const columnOrder = ["startTime", "owner", "nodeID", "validationID", "balance", "weight", "minNonce", "ownerName"];
+
+          const columns = columnOrder
+            .map((key) => {
+              // Skip columns that don't exist in data
+              if (!data[0].hasOwnProperty(key)) return null;
+
+              return {
                 title: key,
                 data: key,
                 render: function (data, type, row) {
@@ -201,14 +196,20 @@
                         return (data / 1e9).toFixed(2);
                       case "owner":
                         return data.match(/^0x[0]{40}$/) ? "" : `<a href="https://${row.network === "fuji" ? "testnet." : ""}snowtrace.io/address/${data}" target="_blank">${row.ownerName || data}</a>`;
+                      case "startTime":
+                      case "endTime":
+                        return new Date(data * 1000).toLocaleString();
+                      case "validationID":
+                        return `<div class="trunc">${data}</div>`;
                       default:
                         return data;
                     }
                   }
                   return data;
                 },
-              })),
-          ];
+              };
+            })
+            .filter((col) => col !== null); // Remove null entries
 
           $("#dataTable2").DataTable({
             data: data,
@@ -230,7 +231,7 @@
             columnDefs: [
               {
                 // Hide columns you don't want to display but want searchable
-                targets: [3, 4, 5, 10], // Add indexes of hidden columns
+                targets: [-1], // Add indexes of hidden columns
                 visible: false,
               },
             ],
@@ -273,39 +274,36 @@
 
         // Initialize DataTable with the JSON data
         function initializeDataTable(data) {
-          const allKeys = Object.keys(data[0]);
+          const columnOrder = ["startTimestamp", "nodeID", "isActive", "isL1Validator", "isConnected", "uptimePercentage", "uptimeSeconds", "weight", "validationID"];
 
-          const columns = [
-            // Place updated_at column definition first
-            {
-              title: "startTimestamp",
-              data: "startTimestamp",
-              render: function (data, type, row) {
-                if (type === "display") {
-                  return new Date(data * 1000).toLocaleString();
-                }
-                return data;
-              },
-            },
-            // Map remaining columns
-            ...allKeys
-              .filter((key) => key !== "startTimestamp")
-              .map((key) => ({
+          const columns = columnOrder
+            .map((key) => {
+              // Skip columns that don't exist in data
+              if (!data[0].hasOwnProperty(key)) return null;
+
+              return {
                 title: key,
                 data: key,
                 render: function (data, type, row) {
                   if (type === "display") {
                     switch (key) {
                       case "nodeID":
-                        return `<a href="https://subnets.avax.network/coqnet/details" target="_blank">${data}</a>`;
+                        return `<a href="https://subnets.avax.network/coqnet/details" target="_blank">${data}</a><i class="fas fa-copy copy-btn" onclick="copyToClipboard('${data}')" title="Copy to clipboard"></i>`;
+                      case "startTimestamp":
+                        return new Date(data * 1000).toLocaleString();
+                      case "uptimePercentage":
+                        return data.toFixed(2);
+                      case "validationID":
+                        return `<div class="trunc">${data}</div>`;
                       default:
                         return data;
                     }
                   }
                   return data;
                 },
-              })),
-          ];
+              };
+            })
+            .filter((col) => col !== null); // Remove null entries
 
           $("#dataTable").DataTable({
             data: data,
