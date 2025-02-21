@@ -91,8 +91,10 @@
         <!-- Table headers will be generated dynamically -->
       </table>
       <script type="module">
-        import { getSnowtraceAddressLink, fetchAddressBook } from "./js/utils.js";
+        import { copyToClipboard, getSnowtraceAddressLink, fetchAddressBook } from "./js/utils.js";
         import { getOwners } from "./js/web3.js";
+        // Make copyToClipboard available globally
+        window.copyToClipboard = copyToClipboard;
 
         // Check for stored API key on page load
         document.addEventListener("DOMContentLoaded", function () {
@@ -194,9 +196,9 @@
                   if (type === "display") {
                     switch (key) {
                       case "nodeID":
-                        return `<a href="https://subnets.avax.network/coqnet/details" target="_blank">${data}</a>`;
+                        return `<a href="https://subnets.avax.network/coqnet/details" target="_blank">${data}</a><i class="fas fa-copy copy-btn" onclick="copyToClipboard('${data}')" title="Copy to clipboard"></i>`;
                       case "balance":
-                        return `${(data / 1e9).toFixed(2)} AVAX`;
+                        return (data / 1e9).toFixed(2);
                       case "owner":
                         return data.match(/^0x[0]{40}$/) ? "" : `<a href="https://${row.network === "fuji" ? "testnet." : ""}snowtrace.io/address/${data}" target="_blank">${row.ownerName || data}</a>`;
                       default:
@@ -220,6 +222,11 @@
             autoWidth: false, // Prevent auto-width calculation
             pageLength: 50,
             order: [[0, "desc"]], // Add this line to set initial sort
+            createdRow: function (row, data, dataIndex) {
+              if (data.balance < 0.01) {
+                $(row).addClass("table-danger"); // Bootstrap's red background class
+              }
+            },
             columnDefs: [
               {
                 // Hide columns you don't want to display but want searchable
