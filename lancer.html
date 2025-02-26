@@ -78,6 +78,24 @@
         <!-- Table headers will be generated dynamically -->
       </table>
 
+      <!-- Error Message Modal -->
+      <div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="errorModalLabel">Error Details</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <pre id="errorModalContent" class="p-3 bg-light" style="white-space: pre-wrap; word-break: break-word"></pre>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <script type="module">
         import { copyToClipboard, getSnowtraceAddressLink, getSnowtraceTxLink, getAvaxPLink, getAvaxCLink, getNodeIDLink } from "./js/utils.js";
         import { getEthBalance, getPChainBalance } from "./js/web3.js";
@@ -108,6 +126,13 @@
             console.error("Error fetching data:", error);
           }
         }
+
+        function showErrorModal(errorMessage) {
+          document.getElementById("errorModalContent").textContent = errorMessage;
+          const errorModal = new bootstrap.Modal(document.getElementById("errorModal"));
+          errorModal.show();
+        }
+        window.showErrorModal = showErrorModal;
 
         // Initialize DataTable with the JSON data
         function initializeDataTable(data) {
@@ -140,6 +165,14 @@
               case "validation_id":
                 baseColumn.render = (data, type, row) => {
                   return `<span class="truncated">${data}</span>`;
+                };
+                break;
+              case "error_message":
+                baseColumn.render = (data, type, row) => {
+                  if (!data) return "";
+                  return `<span class="error-icon" data-bs-toggle="tooltip" title="Click to view error">
+                    <i class="fas fa-exclamation-circle text-danger" onclick="showErrorModal('${data.replace(/'/g, "\\'")}')"></i>
+                  </span>`;
                 };
                 break;
               case "created_at":
