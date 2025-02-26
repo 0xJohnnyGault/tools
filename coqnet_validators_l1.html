@@ -23,6 +23,14 @@
         padding: 20px;
         box-sizing: border-box;
       }
+      .truncated {
+        max-width: 100px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        display: inline-block;
+      }
+
       .dataTable {
         width: 100% !important;
         overflow-x: auto;
@@ -77,173 +85,11 @@
     </style>
   </head>
   <body>
-    <div class="api-key-container" id="apiKeyContainer">
-      <input type="text" id="apiKeyInput" class="api-key-input" placeholder="Enter API Key" style="display: none" />
-      <div id="apiKeyLocked" class="api-key-locked" style="display: none">
-        <i class="fas fa-lock"></i>
-        <i class="fas fa-times delete-key" id="deleteKey"></i>
-      </div>
-    </div>
-
-    <section class="section" style="margin-top: 50px">
+    <section class="section">
       <p>
         <a href="/tools" style="color: #0066cc; text-decoration: none; margin-bottom: 20px; display: inline-block">&larr; Back to Home</a>
       </p>
 
-      <h1>Coqnet Validators from P-Chain</h1>
-      <table id="dataTable2" class="table" style="width: 100%">
-        <!-- Table headers will be generated dynamically -->
-      </table>
-      <script type="module">
-        import { copyToClipboard, getSnowtraceAddressLink, fetchAddressBook } from "./js/utils.js";
-        import { getOwners } from "./js/web3.js";
-        // Make copyToClipboard available globally
-        window.copyToClipboard = copyToClipboard;
-
-        // Check for stored API key on page load
-        document.addEventListener("DOMContentLoaded", function () {
-          const apiKey = localStorage.getItem("coqnetApiKey");
-          const apiKeyInput = document.getElementById("apiKeyInput");
-          const apiKeyLocked = document.getElementById("apiKeyLocked");
-
-          if (apiKey) {
-            apiKeyInput.style.display = "none";
-            apiKeyLocked.style.display = "flex";
-          } else {
-            apiKeyInput.style.display = "block";
-            apiKeyLocked.style.display = "none";
-          }
-
-          // Handle input events
-          apiKeyInput.addEventListener("keypress", function (e) {
-            if (e.key === "Enter") {
-              const key = this.value.trim();
-              if (key) {
-                localStorage.setItem("coqnetApiKey", key);
-                this.style.display = "none";
-                apiKeyLocked.style.display = "flex";
-              }
-            }
-          });
-
-          // Handle delete key
-          document.getElementById("deleteKey").addEventListener("click", function () {
-            localStorage.removeItem("coqnetApiKey");
-            apiKeyLocked.style.display = "none";
-            apiKeyInput.style.display = "block";
-            apiKeyInput.value = "";
-          });
-        });
-
-        async function fetchData() {
-          try {
-            const response = await fetch("https://api.avax.network/ext/bc/P", {
-              method: "POST",
-              body: JSON.stringify({
-                jsonrpc: "2.0",
-                method: "platform.getCurrentValidators",
-                params: {
-                  subnetID: "5moznRzaAEhzWkNTQVdT1U4Kb9EU7dbsKZQNmHwtN5MGVQRyT",
-                },
-                id: 1,
-              }),
-              headers: {
-                "content-type": "application/json",
-              },
-            });
-            const result = await response.json();
-            let data = result.result.validators;
-
-            // Get owner data from validatormanager contract
-            const validationIDs = data.map((v) => v.validationID);
-            const ownersMap = await getOwners(validationIDs);
-            // Add owner field to each validator
-            data = data.map((validator) => ({
-              ...validator,
-              owner: ownersMap[validator.validationID],
-            }));
-
-            // Enrich data with address book
-            const addressBook = await fetchAddressBook();
-            data = data.map((validator) => ({
-              ...validator,
-              ownerName: addressBook[validator.owner.toLowerCase()] || "",
-            }));
-            initializeDataTable(data);
-          } catch (error) {
-            console.error("Error fetching data:", error);
-          }
-        }
-
-        // Initialize DataTable with the JSON data
-        function initializeDataTable(data) {
-          const columnOrder = ["startTime", "owner", "nodeID", "validationID", "balance", "weight", "minNonce", "ownerName"];
-
-          const columns = columnOrder
-            .map((key) => {
-              // Skip columns that don't exist in data
-              if (!data[0].hasOwnProperty(key)) return null;
-
-              return {
-                title: key,
-                data: key,
-                render: function (data, type, row) {
-                  if (type === "display") {
-                    switch (key) {
-                      case "nodeID":
-                        return `<a href="https://subnets.avax.network/coqnet/details" target="_blank">${data}</a><i class="fas fa-copy copy-btn" onclick="copyToClipboard('${data}')" title="Copy to clipboard"></i>`;
-                      case "balance":
-                        return (data / 1e9).toFixed(2);
-                      case "owner":
-                        return data.match(/^0x[0]{40}$/) ? "" : `<a href="https://${row.network === "fuji" ? "testnet." : ""}snowtrace.io/address/${data}" target="_blank">${row.ownerName || data}</a>`;
-                      case "startTime":
-                      case "endTime":
-                        return new Date(data * 1000).toLocaleString();
-                      case "validationID":
-                        return `<div class="trunc">${data}</div>`;
-                      default:
-                        return data;
-                    }
-                  }
-                  return data;
-                },
-              };
-            })
-            .filter((col) => col !== null); // Remove null entries
-
-          $("#dataTable2").DataTable({
-            data: data,
-            columns: columns,
-            ordering: true, // Enable sorting
-            searching: true, // Enable search
-            paging: true, // Enable pagination
-            info: true, // Show table information
-            responsive: false, // Make table responsive
-            scrollX: true, // Add horizontal scrolling
-            autoWidth: false, // Prevent auto-width calculation
-            pageLength: 50,
-            order: [[0, "desc"]], // Add this line to set initial sort
-            createdRow: function (row, data, dataIndex) {
-              if (data.balance < 0.01) {
-                $(row).addClass("table-danger"); // Bootstrap's red background class
-              }
-            },
-            columnDefs: [
-              {
-                // Hide columns you don't want to display but want searchable
-                targets: [-1], // Add indexes of hidden columns
-                visible: false,
-              },
-            ],
-          });
-        }
-
-        // Call fetchData when the page loads
-        fetchData();
-      </script>
-    </section>
-
-    <section class="section">
       <h1>Coqnet Validators from L1 RPC</h1>
       <table id="dataTable" class="table" style="width: 100%">
         <!-- Table headers will be generated dynamically -->
@@ -294,7 +140,7 @@
                       case "uptimePercentage":
                         return data.toFixed(2);
                       case "validationID":
-                        return `<div class="trunc">${data}</div>`;
+                        return `<div class="truncated">${data}</div>`;
                       default:
                         return data;
                     }
@@ -315,7 +161,11 @@
             responsive: false, // Make table responsive
             scrollX: true, // Add horizontal scrolling
             autoWidth: false, // Prevent auto-width calculation
-            pageLength: 50,
+            pageLength: 100,
+            lengthMenu: [
+              [100, -1],
+              [100, "All"],
+            ],
             order: [[0, "desc"]], // Add this line to set initial sort
             createdRow: function (row, data, dataIndex) {
               if (data.uptimePercentage < 80.0 || !data.isConnected) {

@@ -32,6 +32,14 @@
       #dataTable th {
         white-space: nowrap;
       }
+      .truncated-link a {
+        max-width: 100px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        display: inline-block;
+      }
+
       .dataTables_wrapper {
         width: 100%;
         overflow-x: auto;
@@ -147,7 +155,11 @@
             responsive: false, // Make table responsive
             scrollX: true, // Add horizontal scrolling
             autoWidth: false, // Prevent auto-width calculation
-            pageLength: 50,
+            pageLength: 100,
+            lengthMenu: [
+              [100, -1],
+              [100, "All"],
+            ],
             order: [[0, "desc"]], // Add this line to set initial sort
             buttons: [
               {

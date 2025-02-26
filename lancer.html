@@ -31,7 +31,20 @@
       #dataTable th {
         white-space: nowrap;
       }
-
+      .truncated-link a {
+        max-width: 100px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        display: inline-block;
+      }
+      .truncated {
+        max-width: 100px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        display: inline-block;
+      }
       .dataTables_wrapper {
         width: 100%;
         overflow-x: auto;
@@ -120,9 +133,13 @@
                 break;
               case "subnet_id":
               case "blockchain_id":
-              case "validation_id":
                 baseColumn.render = (data, type, row) => {
                   return `${data.substring(0, 10)}...`;
+                };
+                break;
+              case "validation_id":
+                baseColumn.render = (data, type, row) => {
+                  return `<span class="truncated">${data}</span>`;
                 };
                 break;
               case "created_at":
@@ -146,7 +163,11 @@
             responsive: false, // Make table responsive
             scrollX: true, // Add horizontal scrolling
             autoWidth: false, // Prevent auto-width calculation
-            pageLength: 50,
+            pageLength: 100,
+            lengthMenu: [
+              [100, -1],
+              [100, "All"],
+            ],
             order: [[0, "desc"]], // Add this line to set initial sort
             createdRow: function (row, data, dataIndex) {
               if (data.status === "failed") {
